@@ -1,0 +1,12 @@
+output.elasticsearch:
+  hosts: ["https://elasticsearch-master:9200"]
+  protocol: "https"
+  username: "elastic"
+  password: "DG31BsPSQT4AnV5F"
+  ssl.verification_mode: "none"
+
+extraEnvs:
+  - name: ELASTICSEARCH_USERNAME
+    value: "elastic"
+  - name: ELASTICSEARCH_PASSWORD
+    value: "DG31BsPSQT4AnV5F"

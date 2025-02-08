@@ -1,0 +1,314 @@
+NAME: apm
+LAST DEPLOYED: Sat Feb  8 17:01:17 2025
+NAMESPACE: default
+STATUS: deployed
+REVISION: 5
+CHART: apm-server
+VERSION: 8.5.1
+APP_VERSION: 8.5.1
+TEST SUITE: None
+USER-SUPPLIED VALUES:
+null
+
+COMPUTED VALUES:
+affinity: {}
+apmConfig:
+  apm-server.yml: |
+    apm-server:
+      host: "0.0.0.0:8200"
+
+    queue: {}
+
+    output.elasticsearch:
+      hosts: ["https://elasticsearch-master:9200"]
+      username: "elastic"
+      password: "DG31BsPSQT4AnV5F"
+      ssl.verification_mode: "none"
+      ## If SSL is enabled
+      # protocol: https
+      # ssl.certificate_authorities:
+      #  - /usr/share/apm-server/config/certs/elastic-ca.pem
+autoscaling:
+  averageCpuUtilization: 50
+  enabled: false
+  maxReplicas: 3
+  minReplicas: 1
+envFrom: []
+extraContainers: ""
+extraEnvs:
+- name: ELASTICSEARCH_USERNAME
+  valueFrom:
+    secretKeyRef:
+      key: username
+      name: elasticsearch-master-credentials
+- name: ELASTICSEARCH_PASSWORD
+  valueFrom:
+    secretKeyRef:
+      key: password
+      name: elasticsearch-master-credentials
+extraInitContainers: ""
+extraVolumeMounts: []
+extraVolumes: []
+fullnameOverride: ""
+hostAliases: []
+image: docker.elastic.co/apm/apm-server
+imagePullPolicy: IfNotPresent
+imagePullSecrets: []
+imageTag: 8.5.1
+ingress:
+  annotations: {}
+  className: nginx
+  enabled: false
+  hosts:
+  - chart-example.local
+  path: /
+  pathtype: ImplementationSpecific
+  tls: []
+labels: {}
+lifecycle: {}
+livenessProbe:
+  failureThreshold: 3
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+managedServiceAccount: true
+nameOverride: ""
+nodeSelector: {}
+podAnnotations: {}
+podSecurityContext:
+  fsGroup: 1000
+  runAsGroup: 0
+  runAsUser: 1000
+priorityClassName: ""
+readinessProbe:
+  failureThreshold: 3
+  httpGet:
+    path: /
+    port: http
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+replicas: 3
+resources:
+  limits:
+    cpu: 1000m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 100Mi
+secretMounts: []
+securityContext:
+  privileged: false
+  runAsGroup: 0
+  runAsNonRoot: true
+  runAsUser: 1000
+service:
+  annotations: {}
+  loadBalancerIP: ""
+  nodePort: "32000"
+  port: 8200
+  type: NodePort
+serviceAccount: ""
+serviceAccountAnnotations: {}
+terminationGracePeriod: 30
+tolerations: []
+updateStrategy:
+  type: RollingUpdate
+
+HOOKS:
+MANIFEST:
+---
+# Source: apm-server/templates/serviceaccount.yaml
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apm-apm-server
+  annotations:
+  labels:
+    app: "apm-apm-server"
+    chart: "apm-server-8.5.1"
+    heritage: "Helm"
+    release: "apm"
+---
+# Source: apm-server/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: apm-apm-server-config
+  labels:
+    app: "apm-apm-server"
+    chart: "apm-server-8.5.1"
+    heritage: "Helm"
+    release: "apm"
+data:
+  apm-server.yml: |
+    apm-server:
+      host: "0.0.0.0:8200"
+    
+    queue: {}
+    
+    output.elasticsearch:
+      hosts: ["https://elasticsearch-master:9200"]
+      username: "elastic"
+      password: "DG31BsPSQT4AnV5F"
+      ssl.verification_mode: "none"
+      ## If SSL is enabled
+      # protocol: https
+      # ssl.certificate_authorities:
+      #  - /usr/share/apm-server/config/certs/elastic-ca.pem
+---
+# Source: apm-server/templates/clusterrole.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: apm-apm-server-cluster-role
+  labels:
+    app: "apm-apm-server"
+    chart: "apm-server-8.5.1"
+    heritage: "Helm"
+    release: "apm"
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - namespaces
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+---
+# Source: apm-server/templates/clusterrolebinding.yaml
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: apm-apm-server-cluster-role-binding
+  labels:
+    app: "apm-apm-server"
+    chart: "apm-server-8.5.1"
+    heritage: "Helm"
+    release: "apm"
+roleRef:
+  kind: ClusterRole
+  name: apm-apm-server-cluster-role
+  apiGroup: rbac.authorization.k8s.io
+subjects:
+- kind: ServiceAccount
+  name: apm-apm-server
+  namespace: default
+---
+# Source: apm-server/templates/service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: apm-apm-server
+  labels:
+    app: apm-server
+    release: "apm"
+    heritage: Helm
+spec:
+  type: NodePort
+  ports:
+    - port: 8200
+      nodePort: 32000
+      protocol: TCP
+      name: http
+      targetPort: 8200
+  selector:
+    app: apm-server
+    release: "apm"
+---
+# Source: apm-server/templates/deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apm-apm-server
+  labels:
+    app: apm-server
+    release: "apm"
+spec:
+  replicas: 3
+  strategy:
+    type: RollingUpdate
+  selector:
+    matchLabels:
+      app: apm-server
+      release: "apm"
+  template:
+    metadata:
+      labels:
+        app: apm-server
+        release: "apm"
+      annotations:
+        
+        configChecksum: 3d4fb1b1e65df91a61ffd8d84a550b0fe75a44279f4b23026d754e257bb4bb4
+    spec:
+      securityContext:
+          fsGroup: 1000
+          runAsGroup: 0
+          runAsUser: 1000
+      serviceAccountName: apm-apm-server
+      volumes:
+        - name: apm-server-config
+          configMap:
+            name: apm-apm-server-config
+            defaultMode: 0600
+      containers:
+      - name: apm-server
+        image: "docker.elastic.co/apm/apm-server:8.5.1"
+        imagePullPolicy: "IfNotPresent"
+        env:
+          
+          - name: ELASTICSEARCH_USERNAME
+            valueFrom:
+              secretKeyRef:
+                key: username
+                name: elasticsearch-master-credentials
+          - name: ELASTICSEARCH_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                key: password
+                name: elasticsearch-master-credentials
+        securityContext:
+          privileged: false
+          runAsGroup: 0
+          runAsNonRoot: true
+          runAsUser: 1000
+        livenessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        readinessProbe:
+          failureThreshold: 3
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+        ports:
+          - containerPort: 8200
+            name: http
+        resources:
+          limits:
+            cpu: 1000m
+            memory: 512Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        volumeMounts:
+          - name: apm-server-config
+            mountPath: /usr/share/apm-server/apm-server.yml
+            subPath: apm-server.yml
+            readOnly: true
+
+NOTES:
+1. Watch all containers come up.
+  $ kubectl get pods --namespace=default -l app=apm-apm-server -w

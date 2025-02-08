@@ -1,0 +1,48 @@
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: apm-petclinic
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: apm-petclinic
+  template:
+    metadata:
+      labels:
+        app: apm-petclinic
+    spec:
+      imagePullSecrets:
+        - name: regcred
+      containers:
+        - name: petclinic
+          image: praveenjayakar/apm-petclinic:latest
+          env:
+            - name: ELASTIC_APM_SERVICE_NAME
+              value: "petclinic"
+            - name: APM_SERVER_URL           # Changed from ELASTIC_APM_SERVER_URLS
+              value: "http://172.105.48.133:32000"
+            - name: ELASTIC_APM_SECRET_TOKEN
+              value: ""
+            - name: ELASTIC_APM_ENVIRONMENT
+              value: "production"
+            - name: ELASTIC_APM_APPLICATION_PACKAGES
+              value: "com.example"                   # Changed to match your command
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: apm-petclinic-service
+spec:
+  selector:
+    app: apm-petclinic
+  ports:
+    - protocol: TCP
+      port: 8080
+      targetPort: 8080
+      nodePort: 31000
+  type: NodePort
